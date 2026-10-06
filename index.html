@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduGuard AI | Student Dropout Risk Prediction System</title>
+  <meta name="description" content="Explainable AI early-warning retention system for universities. Predicts and prevents student dropout with attendance and academic telemetry.">
+  
+  <!-- Modern Google Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js CDN for Visual Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Core Design System Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Top Persistent Application Navbar -->
+  <header id="appNavbar" class="app-navbar">
+    <!-- Populated dynamically by UI.renderNavbar() -->
+  </header>
+
+  <!-- Main View Container (Switched between Landing, Faculty, Student, and Interventions) -->
+  <div id="mainContentArea">
+    <!-- Dynamic Content Injected Here -->
+  </div>
+
+  <!-- 360° Student Profile Drawer -->
+  <div id="drawerBackdrop" class="drawer-backdrop" onclick="if(event.target === this) UI.closeDrawer()">
+    <div id="drawerPanel" class="drawer-panel">
+      <!-- Populated dynamically by UI.openStudentDrawer() -->
+    </div>
+  </div>
+
+  <!-- Modal: Add / Edit Student Record -->
+  <div id="studentModalOverlay" class="modal-overlay" onclick="if(event.target === this) UI.closeModals()">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modalStudentTitle">Add New Student</h3>
+        <button class="btn-close-icon" onclick="UI.closeModals()">✕</button>
+      </div>
+
+      <form id="studentForm">
+        <input type="hidden" id="studentFormId" value="">
+        <div class="modal-body">
+          <div style="margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Real-Time Risk Calculation Preview:</span>
+            <span id="modalRiskPreviewBadge" class="risk-badge low">
+              <span class="beacon-dot"></span> Live Calc: 25 (Low Risk)
+            </span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label" for="stuFormName">Student Full Name *</label>
+              <input type="text" id="stuFormName" class="form-input" placeholder="e.g. Maya Lin" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="stuFormEmail">University Email *</label>
+              <input type="email" id="stuFormEmail" class="form-input" placeholder="e.g. maya@edu.com" required>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label" for="stuFormDept">Department *</label>
+              <select id="stuFormDept" class="form-select">
+                <option value="CS">Computer Science (CS)</option>
+                <option value="IT">Information Technology (IT)</option>
+                <option value="EC">Electronics & Comm (EC)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="stuFormAtt">Attendance % (Weight 35%) *</label>
+              <input type="number" id="stuFormAtt" class="form-input" min="0" max="100" value="78" required>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label" for="stuFormMarks">Internal Marks % (Weight 30%) *</label>
+              <input type="number" id="stuFormMarks" class="form-input" min="0" max="100" value="65" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="stuFormAssign">Assignment Completion % (20%) *</label>
+              <input type="number" id="stuFormAssign" class="form-input" min="0" max="100" value="75" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="stuFormLms">LMS Engagement Score (0-100, Weight 15%) *</label>
+            <input type="number" id="stuFormLms" class="form-input" min="0" max="100" value="60" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="stuFormNotes">Faculty Diagnostic Observations</label>
+            <textarea id="stuFormNotes" class="form-textarea" rows="3" placeholder="Notes on classroom participation, midterms, or lab progress..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="UI.closeModals()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Student Record</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Assign Intervention -->
+  <div id="interventionModalOverlay" class="modal-overlay" onclick="if(event.target === this) UI.closeModals()">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>⚡ Trigger Academic Intervention Plan</h3>
+        <button class="btn-close-icon" onclick="UI.closeModals()">✕</button>
+      </div>
+
+      <form id="interventionForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="intvStudentSelect">Target At-Risk Student *</label>
+            <select id="intvStudentSelect" class="form-select"></select>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label" for="intvTypeSelect">Intervention Type *</label>
+              <select id="intvTypeSelect" class="form-select">
+                <option value="Attendance Recovery Plan">Attendance Recovery Plan</option>
+                <option value="Faculty 1-on-1 Mentoring Session">Faculty 1-on-1 Mentoring Session</option>
+                <option value="Peer Tutor Assignment">Peer Tutor Assignment</option>
+                <option value="Academic Counseling">Academic Counseling</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="intvPrioritySelect">Intervention Priority *</label>
+              <select id="intvPrioritySelect" class="form-select">
+                <option value="Critical">🔴 Critical (Immediate)</option>
+                <option value="High" selected>🟡 High Priority</option>
+                <option value="Medium">🟢 Medium Priority</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="intvDueDate">Target Resolution Due Date</label>
+            <input type="date" id="intvDueDate" class="form-input">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="intvNotes">Intervention Action Protocol & Instructions</label>
+            <textarea id="intvNotes" class="form-textarea" rows="3" placeholder="Outline specific recovery steps (e.g., Mandatory lab makeup on Thursday, bi-weekly check-in)..."></textarea>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="UI.closeModals()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Dispatch Intervention</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Authentication (Sign In / Sign Up) -->
+  <div id="authModalOverlay" class="modal-overlay" onclick="if(event.target === this) UI.closeModals()">
+    <div class="auth-modal-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h3 id="authModalTitle" style="font-size: 1.3rem;">Sign In to EduGuard</h3>
+        <button class="btn-close-icon" onclick="UI.closeModals()">✕</button>
+      </div>
+
+      <div class="auth-tabs">
+        <button type="button" id="tabLoginBtn" class="auth-tab-btn active" onclick="UI.switchAuthTab('login')">Sign In</button>
+        <button type="button" id="tabRegisterBtn" class="auth-tab-btn" onclick="UI.switchAuthTab('register')">Register</button>
+      </div>
+
+      <!-- Quick 1-Click Buttons inside Auth Modal -->
+      <div style="margin-bottom: 1.5rem; background: rgba(10, 15, 29, 0.6); padding: 0.85rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+        <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; margin-bottom: 0.5rem; text-transform: uppercase;">
+          ⚡ 1-Click Hackathon Logins:
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem;">
+          <button type="button" class="btn btn-sm btn-secondary" onclick="UI.handlePersonaSwitch('admin@edu.com'); UI.closeModals();">
+            👨‍🏫 Faculty
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-danger" onclick="UI.handlePersonaSwitch('alex@edu.com'); UI.closeModals();">
+            🔴 High Risk
+          </button>
+          <button type="button" class="btn btn-sm btn-secondary" onclick="UI.handlePersonaSwitch('sarah@edu.com'); UI.closeModals();">
+            🟡 Med Risk
+          </button>
+          <button type="button" class="btn btn-sm btn-secondary" onclick="UI.handlePersonaSwitch('jordan@edu.com'); UI.closeModals();">
+            🟢 Low Risk
+          </button>
+        </div>
+      </div>
+
+      <form id="authForm" onsubmit="UI.handleManualAuth(event)">
+        <div class="form-group" id="authNameGroup" style="display: none;">
+          <label class="form-label" for="authNameInput">Full Name</label>
+          <input type="text" id="authNameInput" class="form-input" placeholder="e.g. Alex Morgan">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="authEmailInput">University Email</label>
+          <input type="email" id="authEmailInput" class="form-input" placeholder="name@edu.com" required value="admin@edu.com">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="authPasswordInput">Password</label>
+          <input type="password" id="authPasswordInput" class="form-input" placeholder="••••••••" required value="password">
+        </div>
+
+        <div class="form-group" id="authRoleGroup">
+          <label class="form-label" for="authRoleSelect">Portal Role</label>
+          <select id="authRoleSelect" class="form-select">
+            <option value="faculty">Faculty / Academic Admin</option>
+            <option value="student">Student</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="authDeptGroup" style="display: none;">
+          <label class="form-label" for="authDeptSelect">Department</label>
+          <select id="authDeptSelect" class="form-select">
+            <option value="CS">Computer Science (CS)</option>
+            <option value="IT">Information Technology (IT)</option>
+            <option value="EC">Electronics & Comm (EC)</option>
+          </select>
+        </div>
+
+        <button type="submit" id="authSubmitBtn" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+          Sign In
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Alerts Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Application Modular Scripts -->
+  <script src="js/riskEngine.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- Auth modal helpers -->
+  <script>
+    UI.openAuthModal = function(tab = 'login') {
+      const overlay = document.getElementById('authModalOverlay');
+      if (overlay) {
+        UI.switchAuthTab(tab);
+        overlay.classList.add('active');
+      }
+    };
+
+    UI.switchAuthTab = function(tab) {
+      const isRegister = tab === 'register';
+      document.getElementById('tabLoginBtn')?.classList.toggle('active', !isRegister);
+      document.getElementById('tabRegisterBtn')?.classList.toggle('active', isRegister);
+      document.getElementById('authModalTitle').innerText = isRegister ? 'Register EduGuard Account' : 'Sign In to EduGuard';
+      document.getElementById('authNameGroup').style.display = isRegister ? 'block' : 'none';
+      document.getElementById('authDeptGroup').style.display = isRegister ? 'block' : 'none';
+      document.getElementById('authSubmitBtn').innerText = isRegister ? 'Create Account' : 'Sign In';
+    };
+
+    UI.handleManualAuth = function(e) {
+      e.preventDefault();
+      const isRegister = document.getElementById('tabRegisterBtn')?.classList.contains('active');
+      const email = document.getElementById('authEmailInput').value.trim();
+      const password = document.getElementById('authPasswordInput').value;
+      const role = document.getElementById('authRoleSelect').value;
+
+      if (isRegister) {
+        const name = document.getElementById('authNameInput').value.trim() || 'New User';
+        const dept = document.getElementById('authDeptSelect').value;
+        const res = Store.register({ name, email, password, role, department: dept });
+        if (res.success) {
+          UI.closeModals();
+          UI.showToast(`Account created for ${name}!`, 'success');
+          UI.navigate(role === 'student' ? 'student' : 'faculty');
+        }
+      } else {
+        const res = Store.login(email, password, role);
+        if (res.success) {
+          UI.closeModals();
+          UI.showToast(`Welcome back, ${res.user.name}!`, 'success');
+          UI.navigate(res.user.role === 'student' ? 'student' : 'faculty');
+        } else {
+          UI.showToast(res.message, 'danger');
+        }
+      }
+    };
+  </script>
+</body>
+</html>
